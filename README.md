@@ -132,12 +132,3 @@ github.com/neemawatnilay
 evidence or advice. All flags require review by a qualified legal 
 professional.*
 """
-
-with open("README.md", "w") as f:
-    f.write(readme_content)
-
-!git add README.md
-!git commit -m "Add proper README"
-!git push origin main
-
-print("✅ README updated on GitHub!")
