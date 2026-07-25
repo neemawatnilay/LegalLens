@@ -3,9 +3,7 @@ import json
 import re
 import gradio as gr
 from groq import Groq
-from dotenv import load_dotenv
 
-load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def extract_claims(petition_text):
@@ -74,7 +72,10 @@ PETITION:
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "You are a forensic legal analyst specializing in Indian court petition fraud detection."},
+            {
+                "role": "system",
+                "content": "You are a forensic legal analyst specializing in Indian court petition fraud detection."
+            },
             {"role": "user", "content": prompt}
         ],
         temperature=0.0,
@@ -93,9 +94,15 @@ def analyze_petition(petition_text):
         inconsistencies = detect_inconsistencies(claims, petition_text)
 
         severity_weights = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
-        weighted = sum(severity_weights.get(i["severity"], 1) for i in inconsistencies)
-        score = round(max(0, 100 - (weighted / (len(claims) * 3) * 100)), 1)
+        weighted = sum(
+            severity_weights.get(i["severity"], 1)
+            for i in inconsistencies
+        )
+        score = round(
+            max(0, 100 - (weighted / (len(claims) * 3) * 100)), 1
+        )
         risk = "🟢 LOW RISK" if score >= 80 else "🟡 MEDIUM RISK" if score >= 60 else "🔴 HIGH RISK"
+
         counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for i in inconsistencies:
             counts[i["severity"]] += 1
@@ -125,8 +132,13 @@ All flags require human legal review.
         """
 
         flags = "🚨 INCONSISTENCY FLAGS\n" + "─" * 50 + "\n"
-        for inc in sorted(inconsistencies, key=lambda x: {"HIGH":0,"MEDIUM":1,"LOW":2}.get(x["severity"],3)):
-            emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(inc["severity"], "⚪")
+        for inc in sorted(
+            inconsistencies,
+            key=lambda x: {"HIGH":0,"MEDIUM":1,"LOW":2}.get(x["severity"],3)
+        ):
+            emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(
+                inc["severity"], "⚪"
+            )
             flags += f"""
 {emoji} FLAG #{inc["inconsistency_id"]} | {inc["type"]}
 Confidence  : {int(inc["confidence_score"]*100)}%
@@ -138,8 +150,11 @@ Evidence    : {inc["suspicious_text"][:120]}...
 
         claims_out = "📋 EXTRACTED CLAIMS\n" + "─" * 50 + "\n"
         for c in claims:
-            claims_out += f"#{c['claim_id']} [{c['claim_type']}]\n{c['claim_text']}\nDate: {c['date_mentioned']} | Amount: {c['amount_mentioned']}\n\n"
+            claims_out += f"""#{c["claim_id"]} [{c["claim_type"]}]
+{c["claim_text"]}
+Date: {c["date_mentioned"]} | Amount: {c["amount_mentioned"]}
 
+"""
         return summary, flags, claims_out
 
     except Exception as e:
@@ -155,19 +170,55 @@ with gr.Blocks(title="LegalLens", theme=gr.themes.Soft()) as app:
     ### AI-Powered Inconsistency Detection for Court Filings
     *A forensic decision-support tool — not a substitute for legal advice*
     """)
+
     with gr.Row():
         with gr.Column(scale=1):
-            petition_input = gr.Textbox(label="📄 Petition Text", placeholder="Paste petition text here...", lines=20)
-            analyze_btn = gr.Button("🔍 Analyze Petition", variant="primary", size="lg")
+            petition_input = gr.Textbox(
+                label="📄 Petition Text",
+                placeholder="Paste petition text here...",
+                lines=20
+            )
+            analyze_btn = gr.Button(
+                "🔍 Analyze Petition",
+                variant="primary",
+                size="lg"
+            )
+            gr.Markdown("""
+            **Supported filings:**
+            - Matrimonial petitions
+            - Property dispute applications
+            - Civil court filings (English)
+            """)
+
         with gr.Column(scale=1):
-            summary_out = gr.Textbox(label="📊 Consistency Report", lines=15, interactive=False)
-            flags_out = gr.Textbox(label="🚨 Inconsistency Flags", lines=20, interactive=False)
-            claims_out = gr.Textbox(label="📋 Extracted Claims", lines=15, interactive=False)
+            summary_out = gr.Textbox(
+                label="📊 Consistency Report",
+                lines=15,
+                interactive=False
+            )
+            flags_out = gr.Textbox(
+                label="🚨 Inconsistency Flags",
+                lines=20,
+                interactive=False
+            )
+            claims_out = gr.Textbox(
+                label="📋 Extracted Claims",
+                lines=15,
+                interactive=False
+            )
 
     sample_btn = gr.Button("💡 Load Sample Petition")
     sample_btn.click(fn=lambda: sample_text, outputs=petition_input)
-    analyze_btn.click(fn=analyze_petition, inputs=petition_input, outputs=[summary_out, flags_out, claims_out])
-    gr.Markdown("---\nBuilt by **Lat Sahab** | IISc Deep Generative Models Course Project")
+    analyze_btn.click(
+        fn=analyze_petition,
+        inputs=petition_input,
+        outputs=[summary_out, flags_out, claims_out]
+    )
+
+    gr.Markdown("""
+    ---
+    Built by **Lat Sahab** | IISc Deep Generative Models Course Project
+    """)
 
 if __name__ == "__main__":
-    app.launch()
+    app.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
