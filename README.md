@@ -1,6 +1,6 @@
 # LegalLens
 AI-Powered Inconsistency Detection for Indian Court Filings
-readme_content = """# LegalLens 🏛️
+LegalLens 🏛️
 
 **AI-powered inconsistency detection for Indian court filings**
 
